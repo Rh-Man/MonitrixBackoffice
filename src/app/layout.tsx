@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "../styles.css";
-import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Monitrix BackOffice — Super Admin",
@@ -10,9 +9,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body>
-        <Providers>{children}</Providers>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

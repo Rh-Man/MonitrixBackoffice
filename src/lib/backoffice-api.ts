@@ -1,4 +1,4 @@
-import type { PaysOption } from "@/types/backoffice";
+import type { PaysOption, RegulateurOption } from "@/types/backoffice";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
@@ -43,7 +43,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const info = payload as ApiEnvelope<unknown> | string | null;
     const message =
       typeof info === "string"
-        ? info
+        ? info.trim().startsWith("<!DOCTYPE")
+          ? `Erreur API ${response.status}`
+          : info
         : info?.message || info?.error || `Erreur API ${response.status}`;
     const error = new Error(message) as Error & { status?: number; details?: unknown };
     error.status = response.status;
@@ -100,6 +102,49 @@ export async function listPays(): Promise<PaysOption[]> {
       };
     })
     .filter(Boolean) as PaysOption[];
+}
+
+export async function getPays(paysId: string): Promise<PaysOption | undefined> {
+  const items = await listPays();
+  return items.find((item) => item.pays_id === paysId);
+}
+
+export async function listRegulateurs(): Promise<RegulateurOption[]> {
+  const payload = await request<ApiEnvelope<unknown> | unknown[]>(ENDPOINTS.regulateur, {
+    method: "GET",
+  });
+  const raw = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload?.items)
+        ? payload.items
+        : Array.isArray(payload?.results)
+          ? payload.results
+          : [];
+
+  return raw
+    .map((item) => {
+      const record = item as Record<string, unknown>;
+      const id = extractId(record, ["regulateur_id", "id", "regulateurId"]);
+      if (!id) return null;
+      return {
+        regulateur_id: id,
+        nom: String(record.nom ?? record.name ?? "Régulateur sans nom"),
+        telephone: String(record.telephone ?? record.phone ?? ""),
+        categorie: String(record.categorie ?? record.category ?? ""),
+        status: String(record.status ?? record.statut ?? ""),
+        admin_email: String(record.admin_email ?? record.adminEmail ?? ""),
+        admin_nom: String(record.admin_nom ?? record.adminNom ?? ""),
+        pays_id: String(record.pays_id ?? record.paysId ?? ""),
+      };
+    })
+    .filter(Boolean) as RegulateurOption[];
+}
+
+export async function getRegulateur(regulateurId: string): Promise<RegulateurOption | undefined> {
+  const items = await listRegulateurs();
+  return items.find((item) => item.regulateur_id === regulateurId);
 }
 
 export async function createPays(body: { nom: string; code_iso: string }) {
