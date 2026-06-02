@@ -3,13 +3,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Globe2, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { Globe2, LogOut, ChevronLeft, ChevronRight, PlusCircle } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const NAV = [{ href: "/dashboard", label: "Déploiements pays", icon: Globe2 }];
+const NAV = [
+  { href: "/dashboard", label: "Déploiements pays", icon: Globe2 },
+  { href: "/dashboard/deploy", label: "Créer un déploiement", icon: PlusCircle },
+];
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -21,7 +24,7 @@ export function Sidebar() {
   };
 
   return (
-    <div className="relative p-6 pr-0 h-screen hidden md:flex md:flex-col">
+    <div className="sticky top-0 p-6 pr-0 h-screen hidden md:flex md:flex-col shrink-0">
       <aside
         className={cn(
           "flex shrink-0 flex-col bg-sidebar/95 backdrop-blur-xl text-sidebar-foreground border border-sidebar-border/50 shadow-2xl shadow-primary/5 rounded-2xl h-full sticky transition-all duration-300 overflow-visible",
