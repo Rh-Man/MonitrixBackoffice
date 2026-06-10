@@ -6,6 +6,7 @@ import {
   Building2,
   CheckCircle2,
   Clock3,
+  GitBranch,
   Globe2,
   PlusCircle,
   ShieldCheck,
@@ -26,7 +27,7 @@ const MODULES = [
   },
   {
     title: "Régulateur",
-    description: "Créer le régulateur principal et suivre les régulateurs existants.",
+    description: "Créer un régulateur et son compte, puis suivre sa hiérarchie et ses accès.",
     href: "/dashboard/regulateur",
     createHref: "/dashboard/regulateur/creer",
     icon: Building2,
@@ -45,24 +46,24 @@ export default function BackofficeDashboard() {
       tone: "text-primary bg-primary/10 border-primary/20",
     },
     {
-      label: "Régulateurs",
-      value: DEPLOYMENT_STATS.total_regulateurs,
-      detail: "Principaux configurés",
-      icon: Building2,
+      label: "Régulateurs principaux",
+      value: DEPLOYMENT_STATS.total_regulateurs_principaux,
+      detail: `${DEPLOYMENT_STATS.total_regulateurs_fils} régulateur fils`,
+      icon: GitBranch,
       tone: "text-sky-600 bg-sky-500/10 border-sky-500/20",
     },
     {
-      label: "En cours",
-      value: DEPLOYMENT_STATS.total_in_progress,
-      detail: "Déploiement à finaliser",
-      icon: Clock3,
-      tone: "text-warning bg-warning/10 border-warning/20",
+      label: "Comptes viewer",
+      value: DEPLOYMENT_STATS.total_viewers,
+      detail: "Lecture seule régulateur",
+      icon: Users,
+      tone: "text-violet-600 bg-violet-500/10 border-violet-500/20",
     },
     {
-      label: "Utilisateurs",
-      value: DEPLOYMENT_STATS.total_users.toLocaleString("fr-FR"),
-      detail: `${DEPLOYMENT_STATS.total_operateurs} opérateurs`,
-      icon: Users,
+      label: "Régulateurs",
+      value: DEPLOYMENT_STATS.total_regulateurs,
+      detail: "Tous niveaux confondus",
+      icon: Building2,
       tone: "text-success bg-success/10 border-success/20",
     },
   ];
@@ -217,7 +218,7 @@ export default function BackofficeDashboard() {
             <Button asChild className="w-full">
               <Link href="/dashboard/regulateur/creer">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Nouveau régulateur
+                Régulateur + compte
               </Link>
             </Button>
           </CardContent>

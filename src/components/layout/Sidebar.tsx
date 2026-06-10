@@ -35,8 +35,8 @@ const NAV = [
     label: "Régulateur",
     icon: Building2,
     children: [
-      { href: "/dashboard/regulateur/creer", label: "Créer un régulateur", icon: PlusCircle },
-      { href: "/dashboard/regulateur", label: "Liste régulateur", icon: List },
+      { href: "/dashboard/regulateur/creer", label: "Créer régulateur + compte", icon: PlusCircle },
+      { href: "/dashboard/regulateur", label: "Régulateurs et accès", icon: List },
     ],
   },
 ];

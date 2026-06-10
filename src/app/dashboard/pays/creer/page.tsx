@@ -59,9 +59,9 @@ export default function CreatePaysPage() {
                 <Input name="nom" placeholder="Sénégal" required disabled={Boolean(paysId)} />
               </div>
               <div className="space-y-2">
-                <Label>Code ISO</Label>
+                <Label>Code pays</Label>
                 <Input
-                  name="code_iso"
+                  name="code"
                   placeholder="SN"
                   maxLength={3}
                   required

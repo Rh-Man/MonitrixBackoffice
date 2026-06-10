@@ -13,12 +13,12 @@ export interface RegulateurOption {
   admin_email: string;
   admin_nom: string;
   pays_id: string;
+  parent_regulateur_id: string | null;
+  project_type: ProjectType;
+  access_level: AccessLevel;
+  account_status: "ACTIF" | "INVITATION_ENVOYEE" | "EN_ATTENTE";
 }
 
-export interface GeneratedIds {
-  pays_id?: string;
-  permission_id?: string;
-  role_id?: string;
-  regulateur_id?: string;
-  admin_id?: string;
-}
+export type ScopeType = "monitrix" | "regulateur" | "societe";
+export type ProjectType = "betting" | "payment" | "monitoring";
+export type AccessLevel = "owner" | "admin" | "viewer";

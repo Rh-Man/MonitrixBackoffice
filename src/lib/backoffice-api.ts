@@ -1,13 +1,10 @@
-import type { PaysOption, RegulateurOption } from "@/types/backoffice";
+import type { AccessLevel, PaysOption, ProjectType, RegulateurOption } from "@/types/backoffice";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 const ENDPOINTS = {
   pays: "/monitrix/backoffice/admin/pays",
-  permissions: "/monitrix/backoffice/admin/permissions",
-  roles: "/monitrix/backoffice/admin/roles",
   regulateur: "/monitrix/backoffice/admin/regulateur",
-  admin: "/monitrix/auth/admin",
 };
 
 interface ApiEnvelope<T> {
@@ -137,6 +134,14 @@ export async function listRegulateurs(): Promise<RegulateurOption[]> {
         admin_email: String(record.admin_email ?? record.adminEmail ?? ""),
         admin_nom: String(record.admin_nom ?? record.adminNom ?? ""),
         pays_id: String(record.pays_id ?? record.paysId ?? ""),
+        parent_regulateur_id: record.parent_regulateur_id
+          ? String(record.parent_regulateur_id)
+          : null,
+        project_type: String(record.project_type ?? "betting") as ProjectType,
+        access_level: String(record.access_level ?? "admin") as AccessLevel,
+        account_status: String(
+          record.account_status ?? "ACTIF",
+        ) as RegulateurOption["account_status"],
       };
     })
     .filter(Boolean) as RegulateurOption[];
@@ -147,20 +152,8 @@ export async function getRegulateur(regulateurId: string): Promise<RegulateurOpt
   return items.find((item) => item.regulateur_id === regulateurId);
 }
 
-export async function createPays(body: { nom: string; code_iso: string }) {
+export async function createPays(body: { nom: string; code: string }) {
   return request<unknown>(ENDPOINTS.pays, { method: "POST", body: JSON.stringify(body) });
-}
-
-export async function createPermission(body: {
-  libelle: string;
-  code: string;
-  desc_permission: string;
-}) {
-  return request<unknown>(ENDPOINTS.permissions, { method: "POST", body: JSON.stringify(body) });
-}
-
-export async function createRole(body: { libelle: string; code: string; permission_id: string }) {
-  return request<unknown>(ENDPOINTS.roles, { method: "POST", body: JSON.stringify(body) });
 }
 
 export async function createRegulateur(body: {
@@ -170,19 +163,10 @@ export async function createRegulateur(body: {
   status: string;
   admin_email: string;
   admin_nom: string;
-  isParent: boolean;
   pays_id: string;
+  parent_regulateur_id: string | null;
+  project_type: ProjectType;
+  access_level: Exclude<AccessLevel, "owner">;
 }) {
   return request<unknown>(ENDPOINTS.regulateur, { method: "POST", body: JSON.stringify(body) });
-}
-
-export async function createAdminAccount(body: {
-  email: string;
-  password: string;
-  roleId: string;
-  type_projet: string;
-  regulateurId: string;
-  societeId: null;
-}) {
-  return request<unknown>(ENDPOINTS.admin, { method: "POST", body: JSON.stringify(body) });
 }
