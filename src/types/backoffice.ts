@@ -21,4 +21,5 @@ export interface RegulateurOption {
 
 export type ScopeType = "monitrix" | "regulateur" | "societe";
 export type ProjectType = "betting" | "payment" | "monitoring";
-export type AccessLevel = "owner" | "admin" | "viewer";
+export type AccessLevel = "owner" | "admin" | "viewer" | "developer";
+export type RegulateurAccessLevel = Extract<AccessLevel, "admin" | "viewer">;

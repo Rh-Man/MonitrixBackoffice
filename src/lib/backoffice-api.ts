@@ -1,4 +1,10 @@
-import type { AccessLevel, PaysOption, ProjectType, RegulateurOption } from "@/types/backoffice";
+import type {
+  AccessLevel,
+  PaysOption,
+  ProjectType,
+  RegulateurAccessLevel,
+  RegulateurOption,
+} from "@/types/backoffice";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
@@ -166,7 +172,7 @@ export async function createRegulateur(body: {
   pays_id: string;
   parent_regulateur_id: string | null;
   project_type: ProjectType;
-  access_level: Exclude<AccessLevel, "owner">;
+  access_level: RegulateurAccessLevel;
 }) {
   return request<unknown>(ENDPOINTS.regulateur, { method: "POST", body: JSON.stringify(body) });
 }

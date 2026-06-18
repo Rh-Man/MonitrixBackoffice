@@ -13,7 +13,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { MOCK_PAYS, MOCK_REGULATEURS } from "@/lib/mock-data";
-import type { AccessLevel, ProjectType } from "@/types/backoffice";
+import type { ProjectType, RegulateurAccessLevel } from "@/types/backoffice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ const PROJECTS: Array<{ value: ProjectType; label: string; detail: string }> = [
 ];
 
 const ACCESS_LEVELS: Array<{
-  value: Exclude<AccessLevel, "owner">;
+  value: RegulateurAccessLevel;
   label: string;
   detail: string;
 }> = [
@@ -38,7 +38,7 @@ const ACCESS_LEVELS: Array<{
 export default function CreateRegulateurPage() {
   const [parentId, setParentId] = useState("");
   const [projectType, setProjectType] = useState<ProjectType>("betting");
-  const [accessLevel, setAccessLevel] = useState<Exclude<AccessLevel, "owner">>("admin");
+  const [accessLevel, setAccessLevel] = useState<RegulateurAccessLevel>("admin");
   const [result, setResult] = useState<{ regulateurId: string; accountId: string }>();
   const [loading, setLoading] = useState(false);
 
