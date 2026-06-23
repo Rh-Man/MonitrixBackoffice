@@ -1,9 +1,21 @@
-import { Bell, Search, Sparkles, Globe2 } from "lucide-react";
+"use client";
+
+import Link from "next/link";
+import { Bell, Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useSession } from "@/hooks/use-session";
 
 export function Navbar() {
+  const session = useSession();
+  const initials = (session?.nom || "Super Admin")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className="sticky top-0 z-20 px-6 pt-6 pb-2">
       <header className="flex h-16 items-center gap-4 rounded-2xl glass-card px-6 shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-primary/10 border border-border/50 bg-background/80 backdrop-blur-xl">
@@ -29,19 +41,24 @@ export function Navbar() {
           <Bell className="h-5 w-5" />
           <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
         </Button>
-        <div className="flex items-center gap-3 pl-4 border-l border-border/50">
+        <Link
+          href="/dashboard/profil"
+          className="flex items-center gap-3 border-l border-border/50 pl-4"
+        >
           <Avatar className="h-10 w-10 ring-2 ring-primary/20 ring-offset-2 ring-offset-background transition-all hover:ring-primary/50 bg-gradient-to-br from-primary to-accent">
             <AvatarFallback className="text-primary-foreground text-sm font-bold shadow-inner">
-              SA
+              {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden md:block cursor-pointer group">
+          <div className="group hidden md:block">
             <p className="text-sm font-semibold leading-none group-hover:text-primary transition-colors">
-              Super Admin
+              {session?.nom || "Super Admin"}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Déploiements</p>
+            <p className="max-w-40 truncate text-xs text-muted-foreground mt-1">
+              {session?.email || "Déploiements"}
+            </p>
           </div>
-        </div>
+        </Link>
       </header>
     </div>
   );

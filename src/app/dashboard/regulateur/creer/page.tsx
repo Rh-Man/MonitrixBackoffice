@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
+  AlertCircle,
   CheckCircle2,
   ChevronRight,
   Copy,
@@ -12,13 +13,18 @@ import {
   ShieldCheck,
   UserPlus,
 } from "lucide-react";
-import { MOCK_PAYS, MOCK_REGULATEURS } from "@/lib/mock-data";
-import type { ProjectType, RegulateurAccessLevel } from "@/types/backoffice";
+import type {
+  PaysOption,
+  ProjectType,
+  RegulateurAccessLevel,
+  RegulateurOption,
+} from "@/types/backoffice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { createRegulateur, listPays, listRegulateurs } from "@/lib/backoffice-api";
 
 const PROJECTS: Array<{ value: ProjectType; label: string; detail: string }> = [
   { value: "betting", label: "Betting", detail: "Inclut automatiquement Payment" },
@@ -41,19 +47,51 @@ export default function CreateRegulateurPage() {
   const [accessLevel, setAccessLevel] = useState<RegulateurAccessLevel>("admin");
   const [result, setResult] = useState<{ regulateurId: string; accountId: string }>();
   const [loading, setLoading] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [error, setError] = useState<string>();
+  const [pays, setPays] = useState<PaysOption[]>([]);
+  const [regulateurs, setRegulateurs] = useState<RegulateurOption[]>([]);
+
+  useEffect(() => {
+    Promise.all([listPays(), listRegulateurs()])
+      .then(([paysItems, regulateurItems]) => {
+        setPays(paysItems);
+        setRegulateurs(regulateurItems);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Chargement impossible."))
+      .finally(() => setLoadingOptions(false));
+  }, []);
 
   const selectedParent = useMemo(
-    () => MOCK_REGULATEURS.find((item) => item.regulateur_id === parentId),
-    [parentId],
+    () => regulateurs.find((item) => item.regulateur_id === parentId),
+    [parentId, regulateurs],
   );
 
   async function submitRegulateur(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError(undefined);
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const suffix = Date.now().toString().slice(-6);
-    setResult({ regulateurId: `reg_mock_${suffix}`, accountId: `admin_mock_${suffix}` });
-    setLoading(false);
+    const form = new FormData(event.currentTarget);
+    try {
+      const created = await createRegulateur({
+        nom: String(form.get("nom")).trim(),
+        telephone: String(form.get("telephone")).trim(),
+        categorie: String(form.get("categorie")).trim(),
+        status: String(form.get("status")),
+        admin_email: String(form.get("admin_email")).trim(),
+        admin_nom: String(form.get("admin_nom")).trim(),
+        isParent: !parentId,
+        pays_id: String(form.get("pays_id")),
+        parent_regulateur_id: parentId || null,
+        project_type: projectType,
+        access_level: accessLevel,
+      });
+      setResult(created);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Création impossible.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const steps = [
@@ -97,13 +135,13 @@ export default function CreateRegulateurPage() {
                   <select
                     name="pays_id"
                     required
-                    disabled={Boolean(result)}
+                    disabled={Boolean(result) || loadingOptions}
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="">Choisir un pays</option>
-                    {MOCK_PAYS.map((pays) => (
-                      <option key={pays.pays_id} value={pays.pays_id}>
-                        {pays.nom} · {pays.code_iso}
+                    {pays.map((item) => (
+                      <option key={item.pays_id} value={item.pays_id}>
+                        {item.nom} · {item.code_iso}
                       </option>
                     ))}
                   </select>
@@ -118,7 +156,7 @@ export default function CreateRegulateurPage() {
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="">Aucun · Régulateur principal</option>
-                    {MOCK_REGULATEURS.filter((item) => !item.parent_regulateur_id).map((item) => (
+                    {regulateurs.filter((item) => item.is_parent).map((item) => (
                       <option key={item.regulateur_id} value={item.regulateur_id}>
                         {item.nom}
                       </option>
@@ -141,6 +179,27 @@ export default function CreateRegulateurPage() {
                     required
                     disabled={Boolean(result)}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Catégorie</Label>
+                  <Input
+                    name="categorie"
+                    placeholder="Jeux et paris"
+                    required
+                    disabled={Boolean(result)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Statut</Label>
+                  <select
+                    name="status"
+                    defaultValue="active"
+                    disabled={Boolean(result)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="active">Actif</option>
+                    <option value="inactive">Inactif</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label>Téléphone</Label>
@@ -171,6 +230,13 @@ export default function CreateRegulateurPage() {
                   />
                 </div>
               </div>
+
+              {error && (
+                <div className="flex gap-2 rounded-md border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{error}</p>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <Label>Projet</Label>
@@ -246,7 +312,7 @@ export default function CreateRegulateurPage() {
                 </div>
               )}
 
-              <Button type="submit" disabled={loading || Boolean(result)}>
+              <Button type="submit" disabled={loading || loadingOptions || Boolean(result)}>
                 {result
                   ? "Création terminée"
                   : loading

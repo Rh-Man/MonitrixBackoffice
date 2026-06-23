@@ -1,13 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Eye, GitBranch, PlusCircle, ShieldCheck } from "lucide-react";
-import { MOCK_PAYS, MOCK_REGULATEURS } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import {
+  AlertCircle,
+  Building2,
+  Eye,
+  GitBranch,
+  LoaderCircle,
+  PlusCircle,
+  ShieldCheck,
+} from "lucide-react";
+import { listRegulateurs } from "@/lib/backoffice-api";
+import type { RegulateurOption } from "@/types/backoffice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function RegulateurListPage() {
-  const items = MOCK_REGULATEURS;
+  const [items, setItems] = useState<RegulateurOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    listRegulateurs()
+      .then(setItems)
+      .catch((err) => setError(err instanceof Error ? err.message : "Chargement impossible."))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -35,7 +54,17 @@ export default function RegulateurListPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {items.length ? (
+          {loading ? (
+            <div className="flex items-center justify-center p-10 text-muted-foreground">
+              <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+              Chargement des régulateurs...
+            </div>
+          ) : error ? (
+            <div className="flex gap-2 rounded-lg border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          ) : items.length ? (
             <div className="overflow-hidden rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
@@ -54,7 +83,7 @@ export default function RegulateurListPage() {
                       <td className="px-4 py-3">
                         <p className="font-medium">{regulateur.nom}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          {MOCK_PAYS.find((pays) => pays.pays_id === regulateur.pays_id)?.nom}
+                          {regulateur.pays_nom || regulateur.pays_code || "Pays non renseigné"}
                         </p>
                       </td>
                       <td className="px-4 py-3">
@@ -93,7 +122,7 @@ export default function RegulateurListPage() {
             </div>
           ) : (
             <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Aucun régulateur disponible dans les données mockées.
+              Aucun régulateur enregistré.
             </div>
           )}
         </CardContent>

@@ -1,45 +1,72 @@
+import { clearSession, getSession } from "@/lib/session";
 import type {
   AccessLevel,
+  AccountOption,
+  DashboardStats,
   PaysOption,
   ProjectType,
   RegulateurAccessLevel,
   RegulateurOption,
+  ScopeType,
 } from "@/types/backoffice";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+const BACKOFFICE_API_URL =
+  process.env.NEXT_PUBLIC_BACKOFFICE_API_URL?.replace(/\/$/, "") ?? "";
 
 const ENDPOINTS = {
   pays: "/monitrix/backoffice/admin/pays",
   regulateur: "/monitrix/backoffice/admin/regulateur",
+  accounts: "/monitrix/backoffice/admin/accounts",
+  dashboard: "/monitrix/backoffice/admin/dashboard",
 };
 
 interface ApiEnvelope<T> {
   data?: T;
-  items?: T;
-  results?: T;
   message?: string;
   error?: string;
+  id?: string | number;
+}
+
+export class ApiError extends Error {
+  status: number;
+  details: unknown;
+
+  constructor(message: string, status: number, details: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.details = details;
+  }
+}
+
+function requireApiUrl() {
+  if (!BACKOFFICE_API_URL) {
+    throw new Error("NEXT_PUBLIC_BACKOFFICE_API_URL n'est pas configurée.");
+  }
+  return BACKOFFICE_API_URL;
 }
 
 async function parseJson(response: Response) {
   const text = await response.text();
   if (!text) return null;
   try {
-    return JSON.parse(text) as unknown;
+    const first = JSON.parse(text) as unknown;
+    return typeof first === "string" && first.trim().startsWith("{") ? JSON.parse(first) : first;
   } catch {
     return text;
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const session = getSession();
+  const response = await fetch(`${requireApiUrl()}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...init?.headers,
+      ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
+      ...init.headers,
     },
   });
-
   const payload = await parseJson(response);
 
   if (!response.ok) {
@@ -50,116 +77,133 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
           ? `Erreur API ${response.status}`
           : info
         : info?.message || info?.error || `Erreur API ${response.status}`;
-    const error = new Error(message) as Error & { status?: number; details?: unknown };
-    error.status = response.status;
-    error.details = payload;
-    throw error;
+
+    if (response.status === 401) {
+      clearSession();
+      if (typeof window !== "undefined") window.location.assign("/auth/login");
+    }
+    throw new ApiError(message, response.status, payload);
   }
 
   return payload as T;
 }
 
-export function extractId(payload: unknown, keys: string[]) {
-  const queue: unknown[] = [payload];
-
-  while (queue.length) {
-    const current = queue.shift();
-    if (!current || typeof current !== "object") continue;
-
-    for (const key of keys) {
-      const value = (current as Record<string, unknown>)[key];
-      if (typeof value === "string" || typeof value === "number") return String(value);
-    }
-
-    for (const value of Object.values(current as Record<string, unknown>)) {
-      if (value && typeof value === "object") queue.push(value);
-    }
-  }
-
-  return undefined;
+function numberValue(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export async function listPays(): Promise<PaysOption[]> {
-  const payload = await request<ApiEnvelope<unknown> | unknown[]>(ENDPOINTS.pays, {
-    method: "GET",
-  });
-  const raw = Array.isArray(payload)
-    ? payload
-    : Array.isArray(payload?.data)
-      ? payload.data
-      : Array.isArray(payload?.items)
-        ? payload.items
-        : Array.isArray(payload?.results)
-          ? payload.results
-          : [];
-
-  return raw
-    .map((item) => {
-      const record = item as Record<string, unknown>;
-      const id = extractId(record, ["pays_id", "id", "paysId"]);
-      if (!id) return null;
-      return {
-        pays_id: id,
-        nom: String(record.nom ?? record.name ?? "Pays sans nom"),
-        code_iso: String(record.code_iso ?? record.codeISO ?? record.code ?? ""),
-      };
-    })
-    .filter(Boolean) as PaysOption[];
+function mapAccount(record: Record<string, unknown>): AccountOption {
+  return {
+    id: String(record.id ?? ""),
+    idCognito: String(record.idCognito ?? record.idcognito ?? ""),
+    email: String(record.email ?? record.admin_email ?? ""),
+    status: String(record.compte_rds_status ?? record.status ?? ""),
+    scope_type: String(record.scope_type ?? "regulateur") as ScopeType,
+    project_type: record.project_type
+      ? (String(record.project_type) as ProjectType)
+      : null,
+    access_level: String(record.access_level ?? "admin") as AccessLevel,
+    regulateur_id: record.regulateur_id ? String(record.regulateur_id) : undefined,
+    regulateur_nom: record.regulateur_nom ? String(record.regulateur_nom) : undefined,
+    pays_id: record.pays_id ? String(record.pays_id) : undefined,
+    pays_nom: record.pays_nom ? String(record.pays_nom) : undefined,
+  };
 }
 
-export async function getPays(paysId: string): Promise<PaysOption | undefined> {
-  const items = await listPays();
-  return items.find((item) => item.pays_id === paysId);
+function mapPays(record: Record<string, unknown>): PaysOption {
+  return {
+    pays_id: String(record.id ?? record.pays_id ?? ""),
+    nom: String(record.nom ?? "Pays sans nom"),
+    code_iso: String(record.code ?? record.code_iso ?? ""),
+    total_regulateurs:
+      record.total_regulateurs === undefined ? undefined : numberValue(record.total_regulateurs),
+    total_societes:
+      record.total_societes === undefined ? undefined : numberValue(record.total_societes),
+  };
 }
 
-export async function listRegulateurs(): Promise<RegulateurOption[]> {
-  const payload = await request<ApiEnvelope<unknown> | unknown[]>(ENDPOINTS.regulateur, {
-    method: "GET",
-  });
-  const raw = Array.isArray(payload)
-    ? payload
-    : Array.isArray(payload?.data)
-      ? payload.data
-      : Array.isArray(payload?.items)
-        ? payload.items
-        : Array.isArray(payload?.results)
-          ? payload.results
-          : [];
+function mapRegulateur(
+  record: Record<string, unknown>,
+  account?: AccountOption,
+): RegulateurOption {
+  const rawAccounts = Array.isArray(record.accounts)
+    ? record.accounts.map((item) => mapAccount(item as Record<string, unknown>))
+    : account
+      ? [account]
+      : [];
+  const primaryAccount = rawAccounts[0] ?? account;
 
-  return raw
-    .map((item) => {
-      const record = item as Record<string, unknown>;
-      const id = extractId(record, ["regulateur_id", "id", "regulateurId"]);
-      if (!id) return null;
-      return {
-        regulateur_id: id,
-        nom: String(record.nom ?? record.name ?? "Régulateur sans nom"),
-        telephone: String(record.telephone ?? record.phone ?? ""),
-        categorie: String(record.categorie ?? record.category ?? ""),
-        status: String(record.status ?? record.statut ?? ""),
-        admin_email: String(record.admin_email ?? record.adminEmail ?? ""),
-        admin_nom: String(record.admin_nom ?? record.adminNom ?? ""),
-        pays_id: String(record.pays_id ?? record.paysId ?? ""),
-        parent_regulateur_id: record.parent_regulateur_id
-          ? String(record.parent_regulateur_id)
-          : null,
-        project_type: String(record.project_type ?? "betting") as ProjectType,
-        access_level: String(record.access_level ?? "admin") as AccessLevel,
-        account_status: String(
-          record.account_status ?? "ACTIF",
-        ) as RegulateurOption["account_status"],
-      };
-    })
-    .filter(Boolean) as RegulateurOption[];
+  return {
+    regulateur_id: String(record.id ?? record.regulateur_id ?? ""),
+    nom: String(record.nom ?? "Régulateur sans nom"),
+    telephone: String(record.telephone ?? ""),
+    categorie: String(record.categorie ?? ""),
+    status: String(record.status ?? ""),
+    admin_email: String(record.admin_email ?? primaryAccount?.email ?? ""),
+    admin_nom: String(record.admin_nom ?? ""),
+    pays_id: String(record.pays_id ?? ""),
+    pays_nom: record.pays_nom ? String(record.pays_nom) : account?.pays_nom,
+    pays_code: record.pays_code ? String(record.pays_code) : undefined,
+    is_parent: Boolean(record.isParent ?? record.isparent),
+    parent_regulateur_id: record.parent_regulateur_id
+      ? String(record.parent_regulateur_id)
+      : null,
+    project_type: (primaryAccount?.project_type ?? "betting") as ProjectType,
+    access_level: (primaryAccount?.access_level ?? "admin") as RegulateurAccessLevel,
+    account_status: primaryAccount?.status || "inconnu",
+    accounts: rawAccounts,
+  };
 }
 
-export async function getRegulateur(regulateurId: string): Promise<RegulateurOption | undefined> {
-  const items = await listRegulateurs();
-  return items.find((item) => item.regulateur_id === regulateurId);
+export async function listAccounts() {
+  const payload = await request<ApiEnvelope<unknown[]>>(ENDPOINTS.accounts);
+  return (payload.data ?? []).map((item) => mapAccount(item as Record<string, unknown>));
+}
+
+export async function listPays() {
+  const payload = await request<ApiEnvelope<unknown[]>>(ENDPOINTS.pays);
+  return (payload.data ?? []).map((item) => mapPays(item as Record<string, unknown>));
+}
+
+export async function getPays(paysId: string) {
+  const payload = await request<ApiEnvelope<Record<string, unknown>>>(
+    `${ENDPOINTS.pays}/${encodeURIComponent(paysId)}`,
+  );
+  return payload.data ? mapPays(payload.data) : undefined;
 }
 
 export async function createPays(body: { nom: string; code: string }) {
-  return request<unknown>(ENDPOINTS.pays, { method: "POST", body: JSON.stringify(body) });
+  const payload = await request<ApiEnvelope<Record<string, unknown>>>(ENDPOINTS.pays, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return String(payload.id ?? payload.data?.id ?? "");
+}
+
+export async function listRegulateurs() {
+  const [regulateursPayload, accounts] = await Promise.all([
+    request<ApiEnvelope<unknown[]>>(ENDPOINTS.regulateur),
+    listAccounts(),
+  ]);
+  const accountsByRegulateur = new Map(
+    accounts
+      .filter((account) => account.regulateur_id)
+      .map((account) => [account.regulateur_id as string, account]),
+  );
+
+  return (regulateursPayload.data ?? []).map((item) => {
+    const record = item as Record<string, unknown>;
+    const id = String(record.id ?? record.regulateur_id ?? "");
+    return mapRegulateur(record, accountsByRegulateur.get(id));
+  });
+}
+
+export async function getRegulateur(regulateurId: string) {
+  const payload = await request<ApiEnvelope<Record<string, unknown>>>(
+    `${ENDPOINTS.regulateur}/${encodeURIComponent(regulateurId)}`,
+  );
+  return payload.data ? mapRegulateur(payload.data) : undefined;
 }
 
 export async function createRegulateur(body: {
@@ -169,10 +213,51 @@ export async function createRegulateur(body: {
   status: string;
   admin_email: string;
   admin_nom: string;
+  isParent: boolean;
   pays_id: string;
   parent_regulateur_id: string | null;
   project_type: ProjectType;
   access_level: RegulateurAccessLevel;
 }) {
-  return request<unknown>(ENDPOINTS.regulateur, { method: "POST", body: JSON.stringify(body) });
+  const payload = await request<
+    ApiEnvelope<{ regulateur?: { id?: string | number }; account?: { idCognito?: string } }>
+  >(ENDPOINTS.regulateur, { method: "POST", body: JSON.stringify(body) });
+
+  return {
+    regulateurId: String(payload.id ?? payload.data?.regulateur?.id ?? ""),
+    accountId: String(payload.data?.account?.idCognito ?? ""),
+  };
+}
+
+export async function getDashboardStats() {
+  const payload = await request<ApiEnvelope<Record<string, unknown>>>(ENDPOINTS.dashboard);
+  const data = payload.data ?? {};
+  return {
+    totalSocietes: numberValue(data.totalSocietes),
+    totalRegulateurs: numberValue(data.totalRegulateurs),
+    totalDocuments: numberValue(data.totalDocuments),
+    totalPays: numberValue(data.totalPays),
+    totalComptes: numberValue(data.totalComptes),
+    societesByType: (data.societesByType as DashboardStats["societesByType"]) ?? [],
+    regulateursByStatus:
+      (data.regulateursByStatus as DashboardStats["regulateursByStatus"]) ?? [],
+    regulateursByCategory:
+      (data.regulateursByCategory as DashboardStats["regulateursByCategory"]) ?? [],
+    regulateursByCountry:
+      (data.regulateursByCountry as DashboardStats["regulateursByCountry"]) ?? [],
+  } satisfies DashboardStats;
+}
+
+export function updateAccountStatus(accountId: string, status: string) {
+  return request<ApiEnvelope<unknown>>(
+    `${ENDPOINTS.accounts}/${encodeURIComponent(accountId)}/status`,
+    { method: "PATCH", body: JSON.stringify({ status }) },
+  );
+}
+
+export function resendAccountInvitation(accountId: string) {
+  return request<ApiEnvelope<unknown>>(
+    `${ENDPOINTS.accounts}/${encodeURIComponent(accountId)}/resend-invitation`,
+    { method: "POST" },
+  );
 }

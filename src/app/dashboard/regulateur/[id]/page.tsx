@@ -2,18 +2,82 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertCircle, Building2, Copy, GitBranch, KeyRound, Mail } from "lucide-react";
-import { MOCK_PAYS, MOCK_REGULATEURS } from "@/lib/mock-data";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  Building2,
+  Copy,
+  GitBranch,
+  KeyRound,
+  LoaderCircle,
+  Mail,
+  RefreshCw,
+} from "lucide-react";
+import {
+  getRegulateur,
+  listRegulateurs,
+  resendAccountInvitation,
+  updateAccountStatus,
+} from "@/lib/backoffice-api";
+import type { RegulateurOption } from "@/types/backoffice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 
 export default function RegulateurDetailPage() {
   const params = useParams<{ id: string }>();
-  const regulateur = MOCK_REGULATEURS.find((item) => item.regulateur_id === params.id);
-  const parent = regulateur?.parent_regulateur_id
-    ? MOCK_REGULATEURS.find((item) => item.regulateur_id === regulateur.parent_regulateur_id)
-    : undefined;
-  const children = MOCK_REGULATEURS.filter((item) => item.parent_regulateur_id === params.id);
+  const [regulateur, setRegulateur] = useState<RegulateurOption>();
+  const [allRegulateurs, setAllRegulateurs] = useState<RegulateurOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([getRegulateur(params.id), listRegulateurs()])
+      .then(([item, items]) => {
+        setRegulateur(item);
+        setAllRegulateurs(items);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Chargement impossible."))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, [params.id]);
+
+  const parent = useMemo(
+    () =>
+      regulateur?.parent_regulateur_id
+        ? allRegulateurs.find(
+            (item) => item.regulateur_id === regulateur.parent_regulateur_id,
+          )
+        : undefined,
+    [allRegulateurs, regulateur],
+  );
+  const children = allRegulateurs.filter(
+    (item) => item.parent_regulateur_id === params.id,
+  );
+
+  async function changeStatus(accountId: string, currentStatus: string) {
+    try {
+      await updateAccountStatus(
+        accountId,
+        currentStatus.toLowerCase() === "active" ? "inactive" : "active",
+      );
+      toast.success("Statut du compte mis à jour.");
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Mise à jour impossible.");
+    }
+  }
+
+  async function resendInvitation(accountId: string) {
+    try {
+      await resendAccountInvitation(accountId);
+      toast.success("Invitation renvoyée.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Envoi impossible.");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -22,10 +86,17 @@ export default function RegulateurDetailPage() {
         <h1 className="mt-1 text-2xl font-bold tracking-tight">Détail du régulateur</h1>
       </div>
 
-      {!regulateur && (
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          Chargement du régulateur...
+        </div>
+      )}
+
+      {!loading && (error || !regulateur) && (
         <div className="flex gap-2 rounded-md border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Régulateur introuvable dans les données mockées.</p>
+          <p>{error || "Régulateur introuvable."}</p>
         </div>
       )}
 
@@ -48,7 +119,7 @@ export default function RegulateurDetailPage() {
                   ["Email admin", regulateur.admin_email || "-"],
                   [
                     "Pays",
-                    MOCK_PAYS.find((pays) => pays.pays_id === regulateur.pays_id)?.nom || "-",
+                    regulateur.pays_nom || regulateur.pays_code || "-",
                   ],
                   ["regulateur_id", regulateur.regulateur_id],
                 ].map(([label, value]) => (
@@ -101,17 +172,36 @@ export default function RegulateurDetailPage() {
                     <code className="text-xs font-semibold text-primary">{value}</code>
                   </div>
                 ))}
-              {regulateur && (
-                <div className="flex items-center gap-2 rounded-md border px-3 py-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-medium">{regulateur.admin_email}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {regulateur.account_status.replaceAll("_", " ")}
-                    </p>
+              {regulateur?.accounts?.map((account) => (
+                <div key={account.id} className="space-y-2 rounded-md border p-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium">{account.email}</p>
+                      <p className="text-[10px] capitalize text-muted-foreground">
+                        {account.status} · {account.access_level}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => changeStatus(account.id, account.status)}
+                    >
+                      {account.status.toLowerCase() === "active" ? "Désactiver" : "Activer"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => resendInvitation(account.id)}
+                    >
+                      <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                      Invitation
+                    </Button>
                   </div>
                 </div>
-              )}
+              ))}
             </CardContent>
           </Card>
 

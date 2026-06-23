@@ -1,21 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  AlertCircle,
   Building2,
   CheckCircle2,
   Clock3,
   GitBranch,
   Globe2,
+  LoaderCircle,
   PlusCircle,
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { DEPLOYMENT_STATS, MOCK_DEPLOYMENTS } from "@/lib/mock-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getDashboardStats, listPays, listRegulateurs } from "@/lib/backoffice-api";
+import type { DashboardStats, PaysOption, RegulateurOption } from "@/types/backoffice";
 
 const MODULES = [
   {
@@ -35,38 +39,82 @@ const MODULES = [
 ];
 
 export default function BackofficeDashboard() {
-  const activeDeployments = MOCK_DEPLOYMENTS.filter((deployment) => deployment.status === "ACTIF");
-  const pendingDeployments = MOCK_DEPLOYMENTS.filter((deployment) => deployment.status !== "ACTIF");
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>();
+  const [pays, setPays] = useState<PaysOption[]>([]);
+  const [regulateurs, setRegulateurs] = useState<RegulateurOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    Promise.all([getDashboardStats(), listPays(), listRegulateurs()])
+      .then(([statsData, paysItems, regulateurItems]) => {
+        setDashboardStats(statsData);
+        setPays(paysItems);
+        setRegulateurs(regulateurItems);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Chargement impossible."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const activeRegulateurs = useMemo(
+    () => regulateurs.filter((item) => item.status.toLowerCase() === "active"),
+    [regulateurs],
+  );
+  const principalCount = regulateurs.filter((item) => item.is_parent).length;
+  const childrenCount = regulateurs.length - principalCount;
+  const viewerCount = regulateurs.filter((item) => item.access_level === "viewer").length;
+  const successRate = regulateurs.length
+    ? Math.round((activeRegulateurs.length / regulateurs.length) * 100)
+    : 0;
+
   const stats = [
     {
       label: "Pays actifs",
-      value: DEPLOYMENT_STATS.total_deployed,
-      detail: `${DEPLOYMENT_STATS.total_countries} pays suivis`,
+      value: dashboardStats?.totalPays ?? 0,
+      detail: `${pays.length} pays suivis`,
       icon: Globe2,
       tone: "text-primary bg-primary/10 border-primary/20",
     },
     {
       label: "Régulateurs principaux",
-      value: DEPLOYMENT_STATS.total_regulateurs_principaux,
-      detail: `${DEPLOYMENT_STATS.total_regulateurs_fils} régulateur fils`,
+      value: principalCount,
+      detail: `${childrenCount} régulateur fils`,
       icon: GitBranch,
       tone: "text-sky-600 bg-sky-500/10 border-sky-500/20",
     },
     {
       label: "Comptes viewer",
-      value: DEPLOYMENT_STATS.total_viewers,
+      value: viewerCount,
       detail: "Lecture seule régulateur",
       icon: Users,
       tone: "text-violet-600 bg-violet-500/10 border-violet-500/20",
     },
     {
       label: "Régulateurs",
-      value: DEPLOYMENT_STATS.total_regulateurs,
+      value: dashboardStats?.totalRegulateurs ?? 0,
       detail: "Tous niveaux confondus",
       icon: Building2,
       tone: "text-success bg-success/10 border-success/20",
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground">
+        <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+        Chargement du dashboard...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex gap-2 rounded-lg border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">
+        <AlertCircle className="h-4 w-4 shrink-0" />
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -82,7 +130,7 @@ export default function BackofficeDashboard() {
           <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-primary">
             <ShieldCheck className="h-5 w-5" />
             <div>
-              <p className="text-sm font-bold">{DEPLOYMENT_STATS.success_rate}%</p>
+              <p className="text-sm font-bold">{successRate}%</p>
               <p className="text-xs text-muted-foreground">Taux de succès</p>
             </div>
           </div>
@@ -161,34 +209,36 @@ export default function BackofficeDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {MOCK_DEPLOYMENTS.map((deployment) => (
+            {regulateurs.slice(0, 6).map((regulateur) => (
               <Link
-                key={deployment.id}
-                href={`/dashboard/pays/${deployment.pays_id}`}
+                key={regulateur.regulateur_id}
+                href={`/dashboard/regulateur/${regulateur.regulateur_id}`}
                 className="flex items-center justify-between gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/40"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="truncate font-semibold">{deployment.pays_nom}</p>
+                    <p className="truncate font-semibold">
+                      {regulateur.pays_nom || "Pays non renseigné"}
+                    </p>
                     <span
                       className={cn(
                         "rounded-md px-2 py-0.5 text-xs font-semibold",
-                        deployment.status === "ACTIF"
+                        regulateur.status.toLowerCase() === "active"
                           ? "bg-success/10 text-success"
                           : "bg-warning/10 text-warning",
                       )}
                     >
-                      {deployment.status === "ACTIF" ? "Actif" : "En cours"}
+                      {regulateur.status.toLowerCase() === "active" ? "Actif" : "En cours"}
                     </span>
                   </div>
                   <p className="mt-1 truncate text-sm text-muted-foreground">
-                    {deployment.regulateur_nom}
+                    {regulateur.nom}
                   </p>
                 </div>
                 <div className="hidden shrink-0 text-right sm:block">
-                  <p className="text-sm font-bold">{deployment.operateurs_count} opérateurs</p>
-                  <p className="text-xs text-muted-foreground">
-                    {deployment.users_count.toLocaleString("fr-FR")} utilisateurs
+                  <p className="text-sm font-bold capitalize">{regulateur.project_type}</p>
+                  <p className="text-xs capitalize text-muted-foreground">
+                    {regulateur.access_level}
                   </p>
                 </div>
               </Link>
@@ -206,14 +256,16 @@ export default function BackofficeDashboard() {
                 <CheckCircle2 className="h-4 w-4" />
                 <p className="text-sm font-semibold">Déploiements actifs</p>
               </div>
-              <p className="mt-2 text-3xl font-black">{activeDeployments.length}</p>
+              <p className="mt-2 text-3xl font-black">{activeRegulateurs.length}</p>
             </div>
             <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
               <div className="flex items-center gap-2 text-warning">
                 <Clock3 className="h-4 w-4" />
                 <p className="text-sm font-semibold">À finaliser</p>
               </div>
-              <p className="mt-2 text-3xl font-black">{pendingDeployments.length}</p>
+              <p className="mt-2 text-3xl font-black">
+                {Math.max(regulateurs.length - activeRegulateurs.length, 0)}
+              </p>
             </div>
             <Button asChild className="w-full">
               <Link href="/dashboard/regulateur/creer">

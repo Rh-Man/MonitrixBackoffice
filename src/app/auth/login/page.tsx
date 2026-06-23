@@ -1,14 +1,59 @@
 "use client";
 
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, KeyRound, Mail, Shield } from "lucide-react";
+import { AlertCircle, ArrowRight, KeyRound, LoaderCircle, Mail, Shield } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { login } from "@/lib/auth-api";
+import {
+  savePasswordChallenge,
+  savePendingSession,
+  saveSession,
+  toAuthSession,
+} from "@/lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [error, setError] = useState<string>();
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(undefined);
+    setLoading(true);
+
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await login(String(form.get("email")), String(form.get("password")));
+
+      if ("challengeName" in response) {
+        savePasswordChallenge({ email: response.email, session: response.session });
+        router.push("/auth/change-password");
+        return;
+      }
+
+      const session = toAuthSession(response);
+
+      if (response.data.role.scope_type !== "monitrix" || response.data.role.access_level !== "owner") {
+        throw new Error("Ce backoffice est réservé au Super Admin Monitrix.");
+      }
+
+      if (response.data.mfa_active) {
+        savePendingSession(session);
+        router.push("/auth/mfa");
+      } else {
+        saveSession(session);
+        router.push("/dashboard");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Connexion impossible.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <main className="min-h-screen grid bg-background lg:grid-cols-[1.1fr_0.9fr]">
@@ -33,8 +78,8 @@ export default function LoginPage() {
             Créez un environnement pays sans casser les dépendances.
           </h1>
           <p className="mt-5 max-w-lg text-sm leading-6 text-sidebar-foreground/72">
-            Le backoffice respecte l’ordre des contraintes FK: pays, permission, rôle, régulateur,
-            puis compte administrateur.
+            Le backoffice orchestre la création des pays, des régulateurs et de leurs comptes avec
+            les rôles système définis par le backend.
           </p>
         </div>
 
@@ -54,19 +99,14 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form
-              className="space-y-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                router.push("/dashboard");
-              }}
-            >
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     className="pl-9"
                     placeholder="superadmin@monitrix.io"
@@ -81,6 +121,7 @@ export default function LoginPage() {
                   <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="password"
+                    name="password"
                     type="password"
                     className="pl-9"
                     placeholder="••••••••"
@@ -89,9 +130,21 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
-              <Button type="submit" size="lg" className="w-full px-4">
-                Entrer dans le backoffice
-                <ArrowRight className="ml-auto h-4 w-4" />
+              {error && (
+                <div className="flex gap-2 rounded-md border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{error}</p>
+                </div>
+              )}
+              <Button type="submit" size="lg" className="w-full px-4" disabled={loading}>
+                {loading ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    Entrer dans le backoffice
+                    <ArrowRight className="ml-auto h-4 w-4" />
+                  </>
+                )}
               </Button>
             </form>
           </CardContent>
