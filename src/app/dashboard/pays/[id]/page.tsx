@@ -2,14 +2,25 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertCircle, Copy, Globe2 } from "lucide-react";
-import { MOCK_PAYS } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { AlertCircle, Copy, Globe2, LoaderCircle } from "lucide-react";
+import { getPays } from "@/lib/backoffice-api";
+import type { PaysOption } from "@/types/backoffice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function PaysDetailPage() {
   const params = useParams<{ id: string }>();
-  const pays = MOCK_PAYS.find((item) => item.pays_id === params.id);
+  const [pays, setPays] = useState<PaysOption>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    getPays(params.id)
+      .then(setPays)
+      .catch((err) => setError(err instanceof Error ? err.message : "Chargement impossible."))
+      .finally(() => setLoading(false));
+  }, [params.id]);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -18,10 +29,17 @@ export default function PaysDetailPage() {
         <h1 className="mt-1 text-2xl font-bold tracking-tight">Détail du pays</h1>
       </div>
 
-      {!pays && (
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          Chargement du pays...
+        </div>
+      )}
+
+      {!loading && (error || !pays) && (
         <div className="flex gap-2 rounded-md border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Pays introuvable dans les données mockées.</p>
+          <p>{error || "Pays introuvable."}</p>
         </div>
       )}
 
@@ -34,10 +52,18 @@ export default function PaysDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {pays ? (
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="rounded-md border p-3">
                 <p className="text-xs uppercase text-muted-foreground">Nom</p>
                 <p className="mt-1 font-semibold">{pays.nom}</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs uppercase text-muted-foreground">Régulateurs</p>
+                <p className="mt-1 font-semibold">{pays.total_regulateurs ?? 0}</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs uppercase text-muted-foreground">Sociétés</p>
+                <p className="mt-1 font-semibold">{pays.total_societes ?? 0}</p>
               </div>
               <div className="rounded-md border p-3">
                 <p className="text-xs uppercase text-muted-foreground">Code ISO</p>

@@ -13,11 +13,14 @@ import {
   List,
   LogOut,
   PlusCircle,
+  UserRound,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { clearSession } from "@/lib/session";
+import { useSession } from "@/hooks/use-session";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
@@ -39,14 +42,17 @@ const NAV = [
       { href: "/dashboard/regulateur", label: "Régulateurs et accès", icon: List },
     ],
   },
+  { href: "/dashboard/profil", label: "Profil", icon: UserRound },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const session = useSession();
 
   const handleLogout = () => {
+    clearSession();
     router.push("/auth/login");
   };
 
@@ -189,13 +195,22 @@ export function Sidebar() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">Super Admin</p>
-                  <p className="truncate text-xs text-sidebar-foreground/60">Déploiements</p>
+                  <p className="truncate text-sm font-semibold">{session?.nom || "Super Admin"}</p>
+                  <p className="truncate text-xs text-sidebar-foreground/60">
+                    {session?.email || "Déploiements"}
+                  </p>
                 </div>
               </div>
+              <Link
+                href="/dashboard/profil"
+                className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-sidebar-accent px-3 py-1.5 text-xs font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/80"
+              >
+                <UserRound className="h-3.5 w-3.5" />
+                Mon profil
+              </Link>
               <button
                 onClick={handleLogout}
-                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-sidebar-accent px-3 py-1.5 text-xs font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/80 transition-colors"
+                className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-sidebar-accent px-3 py-1.5 text-xs font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/80 transition-colors"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 Déconnexion

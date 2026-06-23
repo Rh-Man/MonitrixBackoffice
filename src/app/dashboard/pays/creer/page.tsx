@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createPays } from "@/lib/backoffice-api";
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -24,8 +25,12 @@ export default function CreatePaysPage() {
     setLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      setPaysId(`pays_mock_${Date.now().toString().slice(-6)}`);
+      const form = new FormData(event.currentTarget);
+      const id = await createPays({
+        nom: String(form.get("nom")).trim(),
+        code: String(form.get("code")).trim().toUpperCase(),
+      });
+      setPaysId(id);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -39,8 +44,7 @@ export default function CreatePaysPage() {
         <p className="text-sm font-semibold text-primary">Pays</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">Créer un pays</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Mode mock pour l’instant. Le formulaire reste aligné sur `POST
-          /monitrix/backoffice/admin/pays`.
+          Le pays sera créé dans l’environnement Backoffice configuré.
         </p>
       </div>
 
@@ -55,11 +59,11 @@ export default function CreatePaysPage() {
           <form onSubmit={submitPays} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Nom</Label>
+                <Label htmlFor="nom">Nom</Label>
                 <Input name="nom" placeholder="Sénégal" required disabled={Boolean(paysId)} />
               </div>
               <div className="space-y-2">
-                <Label>Code pays</Label>
+                <Label htmlFor="code">Code pays</Label>
                 <Input
                   name="code"
                   placeholder="SN"

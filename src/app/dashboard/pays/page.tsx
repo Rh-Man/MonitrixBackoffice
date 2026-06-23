@@ -1,13 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { Eye, Globe2, PlusCircle } from "lucide-react";
-import { MOCK_PAYS } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { AlertCircle, Eye, Globe2, LoaderCircle, PlusCircle } from "lucide-react";
+import { listPays } from "@/lib/backoffice-api";
+import type { PaysOption } from "@/types/backoffice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function PaysListPage() {
-  const items = MOCK_PAYS;
+  const [items, setItems] = useState<PaysOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    listPays()
+      .then(setItems)
+      .catch((err) => setError(err instanceof Error ? err.message : "Chargement impossible."))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -35,7 +46,17 @@ export default function PaysListPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {items.length ? (
+          {loading ? (
+            <div className="flex items-center justify-center p-10 text-muted-foreground">
+              <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+              Chargement des pays...
+            </div>
+          ) : error ? (
+            <div className="flex gap-2 rounded-lg border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          ) : items.length ? (
             <div className="overflow-hidden rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
@@ -67,7 +88,7 @@ export default function PaysListPage() {
             </div>
           ) : (
             <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Aucun pays disponible dans les données mockées.
+              Aucun pays enregistré.
             </div>
           )}
         </CardContent>
