@@ -39,13 +39,13 @@ export default function MfaPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center app-surface p-6">
+    <main className="flex min-h-screen items-center justify-center app-surface p-4 sm:p-6">
       <Card className="w-full max-w-md border-border/70 shadow-xl">
-        <CardContent className="p-8">
+        <CardContent className="p-6 sm:p-8">
           <div className="mb-7 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <ShieldCheck className="h-6 w-6" />
           </div>
-          <h1 className="text-2xl font-semibold">Vérification MFA</h1>
+          <h1 className="text-xl font-semibold sm:text-2xl">Vérification MFA</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Saisissez le code à six chiffres envoyé à votre adresse email.
           </p>

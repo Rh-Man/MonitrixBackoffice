@@ -166,7 +166,7 @@ export default function RegulateurDetailPage() {
                 ].map(([label, value]) => (
                   <div
                     key={label}
-                    className="flex items-center justify-between rounded-md border px-3 py-2"
+                    className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-md border px-3 py-2"
                   >
                     <span className="text-xs text-muted-foreground">{label}</span>
                     <code className="text-xs font-semibold text-primary">{value}</code>

@@ -213,7 +213,7 @@ export default function BackofficeDashboard() {
               <Link
                 key={regulateur.regulateur_id}
                 href={`/dashboard/regulateur/${regulateur.regulateur_id}`}
-                className="flex items-center justify-between gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/40"
+                className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/40"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">

@@ -57,6 +57,38 @@ export function Sidebar() {
   };
 
   return (
+    <>
+    <nav className="fixed inset-x-3 bottom-3 z-40 flex items-center gap-1 overflow-x-auto rounded-2xl border border-sidebar-border/40 bg-sidebar/95 p-2 text-sidebar-foreground shadow-2xl shadow-primary/10 backdrop-blur-xl md:hidden">
+      {NAV.map((item) => {
+        const Icon = item.icon;
+        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex min-w-[4.75rem] flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-semibold transition-colors",
+              active
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+            )}
+          >
+            <Icon className="h-5 w-5" />
+            <span className="max-w-full truncate">{item.label}</span>
+          </Link>
+        );
+      })}
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="flex min-w-[4.75rem] flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-semibold text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+      >
+        <LogOut className="h-5 w-5" />
+        <span className="max-w-full truncate">Sortir</span>
+      </button>
+    </nav>
+
     <div className="sticky top-0 p-6 pr-0 h-screen hidden md:flex md:flex-col shrink-0">
       <aside
         className={cn(
@@ -230,5 +262,6 @@ export function Sidebar() {
         </div>
       </aside>
     </div>
+    </>
   );
 }

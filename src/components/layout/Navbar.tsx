@@ -17,10 +17,10 @@ export function Navbar() {
     .toUpperCase();
 
   return (
-    <div className="sticky top-0 z-20 px-6 pt-6 pb-2">
-      <header className="flex h-16 items-center gap-4 rounded-2xl glass-card px-6 shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-primary/10 border border-border/50 bg-background/80 backdrop-blur-xl">
+    <div className="sticky top-0 z-20 px-4 pt-4 pb-2 sm:px-6 sm:pt-6">
+      <header className="flex min-h-14 items-center gap-3 rounded-2xl glass-card border border-border/50 bg-background/80 px-3 py-2 shadow-lg shadow-primary/5 backdrop-blur-xl transition-all duration-300 hover:shadow-primary/10 sm:h-16 sm:px-6 sm:py-0">
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+          <Sparkles className="h-5 w-5 shrink-0 text-primary animate-pulse" />
           <div>
             <p className="text-xs text-muted-foreground">Monitrix / Backoffice</p>
             <p className="text-sm font-semibold text-foreground">Console Super Admin</p>
@@ -36,16 +36,16 @@ export function Navbar() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative rounded-xl hover:bg-primary/10 hover:text-primary transition-colors"
+          className="relative hidden rounded-xl hover:bg-primary/10 hover:text-primary transition-colors sm:inline-flex"
         >
           <Bell className="h-5 w-5" />
           <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
         </Button>
         <Link
           href="/dashboard/profil"
-          className="flex items-center gap-3 border-l border-border/50 pl-4"
+          className="flex items-center gap-2 border-border/50 sm:gap-3 sm:border-l sm:pl-4"
         >
-          <Avatar className="h-10 w-10 ring-2 ring-primary/20 ring-offset-2 ring-offset-background transition-all hover:ring-primary/50 bg-gradient-to-br from-primary to-accent">
+          <Avatar className="h-9 w-9 bg-gradient-to-br from-primary to-accent ring-2 ring-primary/20 ring-offset-2 ring-offset-background transition-all hover:ring-primary/50 sm:h-10 sm:w-10">
             <AvatarFallback className="text-primary-foreground text-sm font-bold shadow-inner">
               {initials}
             </AvatarFallback>

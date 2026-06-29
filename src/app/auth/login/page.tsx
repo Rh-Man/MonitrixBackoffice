@@ -86,14 +86,14 @@ export default function LoginPage() {
         <p className="text-xs text-sidebar-foreground/50">© 2026 Monitrix · Console interne</p>
       </section>
 
-      <section className="flex items-center justify-center app-surface p-6 lg:p-12">
+      <section className="flex items-center justify-center app-surface p-4 sm:p-6 lg:p-12">
         <Card className="w-full max-w-md border-border/70 bg-card/95 shadow-xl shadow-slate-200/70">
-          <CardContent className="p-8">
+          <CardContent className="p-6 sm:p-8">
             <div className="mb-7">
               <p className="mb-3 inline-flex rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                 Accès réservé
               </p>
-              <h2 className="text-2xl font-semibold tracking-tight">Connexion Super Admin</h2>
+              <h2 className="text-xl font-semibold sm:text-2xl tracking-tight">Connexion Super Admin</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Authentifiez-vous pour gérer les déploiements pays Monitrix.
               </p>

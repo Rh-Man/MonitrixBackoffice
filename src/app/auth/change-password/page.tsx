@@ -75,14 +75,14 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center app-surface p-6">
+    <main className="flex min-h-screen items-center justify-center app-surface p-4 sm:p-6">
       <Card className="w-full max-w-md border-border/70 bg-card/95 shadow-xl shadow-slate-200/70">
-        <CardContent className="p-8">
+        <CardContent className="p-6 sm:p-8">
           <div className="mb-7">
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
               <KeyRound className="h-5 w-5" />
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">Créer votre mot de passe</h1>
+            <h1 className="text-xl font-semibold sm:text-2xl tracking-tight">Créer votre mot de passe</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Remplacez le mot de passe temporaire avant de poursuivre vers la vérification MFA.
             </p>
